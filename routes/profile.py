@@ -51,7 +51,7 @@ async def update_profile(
                 "height": profile.height,
                 "weight": profile.weight,
                 "goal": profile.goal,
-                "activity_level": profile.activity_level
+                "training_days_per_week": profile.training_days_per_week
             }
         }
     )

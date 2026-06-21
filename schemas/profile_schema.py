@@ -2,13 +2,14 @@ from pydantic import BaseModel,Field
 
 
 class ProfileUpdate(BaseModel):
-    age:int 
+    age: int
     gender: str
     height: float
-    goal: str
-    activity_level: str
     weight: float
 
+    goal: str
+
+    training_days_per_week: int
 
 class ProfileResponse(BaseModel):
    id: str 
@@ -22,4 +23,4 @@ class ProfileResponse(BaseModel):
    weight: float 
     
    goal: str 
-   activity_level: str 
+   training_days_per_week: int 
