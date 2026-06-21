@@ -1,0 +1,94 @@
+import os
+from datetime import datetime, timedelta, timezone
+# pyrefly: ignore [missing-import]
+from fastapi import HTTPException, status
+# pyrefly: ignore [missing-import]
+import bcrypt
+# pyrefly: ignore [missing-import]
+import jwt
+from schemas.user_schema import UserRegister, UserLogin
+
+# JWT Configurations
+
+SECRET_KEY = os.getenv("SECRET_KEY", "9a1b2c3d4e5f6g7h8i9j0k1l2m3n4o5p6q7r8s9t0u1v2w3x4y5z")
+ALGORITHM = "HS256"
+ACCESS_TOKEN_EXPIRE_MINUTES = 1440  # 24 Hours
+
+def hash_password(password: str) -> str:
+    """Hash plain password using bcrypt."""
+    pwd_bytes = password.encode('utf-8')
+    salt = bcrypt.gensalt()
+    hashed = bcrypt.hashpw(pwd_bytes, salt)
+    return hashed.decode('utf-8')
+
+def verify_password(plain_password: str, hashed_password: str) -> bool:
+    """Verify plain password against hashed password."""
+    try:
+        return bcrypt.checkpw(
+            plain_password.encode('utf-8'),
+            hashed_password.encode('utf-8')
+        )
+
+    except Exception:
+        return False
+
+def create_access_token(data: dict, expires_delta: timedelta = None) -> str:
+    """Create JWT access token."""
+    to_encode = data.copy()
+    if expires_delta:
+        expire = datetime.now(timezone.utc) + expires_delta
+    else:
+        expire = datetime.now(timezone.utc) + timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
+    to_encode.update({"exp": expire})
+    encoded_jwt = jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
+    return encoded_jwt
+
+async def register_user(db, user: UserRegister) -> dict:
+    email_lower = user.email.strip().lower()
+    
+   
+    existing_user = await db.users.find_one({"email": email_lower})
+    if existing_user:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Email already registered"
+        )
+    
+    hashed_pwd = hash_password(user.password)
+    
+    user_dict = {
+        "name": user.name.strip(),
+        "email": email_lower,
+        "password": hashed_pwd,
+        "created_at": datetime.now(timezone.utc)
+    }
+    
+    result = await db.users.insert_one(user_dict)
+
+    new_user = await db.users.find_one({"_id": result.inserted_id})
+    return new_user
+
+
+
+async def authenticate_user(db, credentials: UserLogin) -> dict:
+
+    email_lower = credentials.email.strip().lower()
+    
+    # Retrieve user from database
+    user = await db.users.find_one({"email": email_lower})
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid email or password",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+        
+    # Check password
+    if not verify_password(credentials.password, user["password"]):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid email or password",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+        
+    return user
