@@ -2,7 +2,7 @@
 from fastapi import FastAPI
 from contextlib import asynccontextmanager
 from database.db import init_db, close_db
-from routes import auth
+from routes import auth,profile
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -23,3 +23,4 @@ async def home():
     return {"message": "Welcome to FitMind AI Backend!"}
 
 app.include_router(auth.router, prefix="/auth", tags=["Authentication"])
+app.include_router(profile.router)

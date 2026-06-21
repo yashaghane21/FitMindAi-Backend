@@ -10,13 +10,12 @@ from schemas.user_schema import (
 )
 
 from database.db import get_database
-
 from services.auth_service import (
     register_user,
     authenticate_user,
-    create_access_token,
 )
-
+from core.security import create_access_token
+from core.dependencies import get_current_user
 router = APIRouter()
 
 
@@ -48,3 +47,9 @@ async def login(credentials: UserLogin, db=Depends(get_database)):
         "token_type": "bearer",
         "user": user
     }
+
+@router.get("/me")
+async def get_me(
+    current_user=Depends(get_current_user)
+):
+    return current_user
